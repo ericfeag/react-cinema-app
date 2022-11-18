@@ -1,3 +1,6 @@
+orbs:
+  slack: circleci/slack@4.10.1
+
 version: 2.1
 
 jobs: 
@@ -5,7 +8,17 @@ jobs:
     docker:
       - image: circleci/node:18.12.0
     working_directory: ~/repo
-    steps: 
+  slack-executor:
+    docker:
+      -image: 'cibuilds/base:latest'
+    resource_class: small
+  terraform-executor:
+    docker:
+      - image: hashicorp/terraform:latest
+
+
+
+aliases: 
       - checkout
       - run:
           name: Show current branch
@@ -16,7 +29,9 @@ jobs:
           - app-
       - run: 
           name: Install dependencies
-          command: npm install
+          command: |
+          mkdir -p artifacts
+          npm install
       - save_cache:
           paths:
             - node_modules
@@ -56,7 +71,13 @@ jobs:
       - *restore-cache
       - *install-dependencies
       - *save-cache
-
+      - run:
+          name: Copy Infrastructure Folder
+          command: cp -r infrastructure artifacts/infrastructure
+      - persist_to_workspace:
+          root: ./
+          paths:
+            - artifacts
   linting:
     executor: app-executor
     steps: 
@@ -76,11 +97,62 @@ jobs:
       - run: 
           name: Run prettier check
           command: npm run prettier:check 
-
-
-    - run:
+  
+  terraform-validate: 
+    executor: terraform-executor
+    steps:
+      - chekout:
+      - *show-current-branch-name
+      -run:
+        name: Terraform Validate & Format
+        command: | 
+          cd infrastructure/
+          terraform init -backend=false
+          terraform validate
+          terraform fmt -check 
+   
+   terraform-plan-and-apply: 
+    executor: terraform-executor
+    steps:
+      - chekout:
+      - attach_workspace:
+          at: ./
+      - *show-current-branch-name
+      -run:
+        name: Terraform Plan
+        command: | 
+          cd artefacts/infrastructure/
+          terraform init 
+          terraform workspaces select ${CIRCLE_BRANCH} || terraform workspace new ${CIRCLE_BRANCH}
+          terraform plan
+      -run:
+        name: Terraform Apply
+        command: | 
+          cd artefacts/infrastructure/
+          terraform workspaces select ${CIRCLE_BRANCH} 
+          terraform apply --auto-approve
+          terraform output cinema_app_bucket_name >../cinema_bucket_name.txt
+          terraform output cloudfront_distribution_id >../cloudfront_distribution_id.txt
+      
+      -persist_to_workspace:
+          root: ./
+          paths:
+            - artifacts
+    deploy-to-aws-s3:
+      executor: app-executor
+      steps:
+        - checkout
+        - attach_workspace:
+            att: ./
+        - *show-current-branch-name
+        - *install-aws-CLI
+        - *build-project
+      -run:
         name: Deploy to AWS S3
         command: |
+          CLOUDFRONT_DISTRIBUTION_=$(cat artifacts/cloudfront_distribution_id.txt | sed 's/\"//g')
+          echo CLOUDFRONT_DISTRIBUTION_
+          aws configure set preview.cloudfront true
           if ["${CURRENT_BRANCH}" == "master"]
           then
             aws --region ${AWS_REGION} s3 sync ~/repo/build s3://${AWS_BUCKET_PROD} --delete
@@ -89,6 +161,11 @@ jobs:
           else
             aws --region ${AWS_REGION} s3 sync ~/repo/build s3://${AWS_DEV_BUCKET} --delete
           fi
+      -
+  test: 
+    executor: app-executor
+    steps:
+      - run: echo "test my app"
 
 deploy-to-aws-cloudfront:
   docker:
@@ -126,6 +203,79 @@ deploy-to-aws-cloudfront:
           else
             aws cloudfront create-invalidation --distribution-id ${DEV_DISTRIBUTION_ID} --paths /\*
           fi
+  
+  notify-via-slack:
+    executor: slack-executor
+    steps:
+      - run: echo "Slack notification"
+      - slack/notify:
+          event: 'always'
+          channel: 'cinema-app-circleci'
+          template: ''
+          custom: |
+            {
+              "blocks": [
+                {
+                  "type": "header"
+                  "text": {
+                    "type": "plain_text",
+                    "text": "${CIRCLE_BRANCH} branch deployment to aws s3 and cloudfront is complete.",
+                    "emoji" : true
+                  }
+                },
+                {
+                  "type": "section",
+                  "fields": [
+                    {
+                    "type": "mrkdwn",
+                    "text": "*Project*:\n$CIRCLE_PROJECT_REPONAME"
+                  },
+                  {
+                    "type": "mrkdwn",
+                    "text": "*Branch*:\n$CIRCLE_BRANCH"
+                  },
+                  {
+                    "type": "mrkdwn",
+                    "text": "*When*:\n$(date + %m/%d/%Y %T)"
+                  },
+                  {
+                     "type": "mrkdwn",
+                    "text": "*When*:\n$CIRCLE_BUILD_NUM"
+                  },
+                  {
+                       "type": "mrkdwn",
+                    "text": "*Author*:\n$CIRCLE_PROJECT_USERNAME"
+                  },
+                  {
+                    "type": "actions",
+                    "elements": [
+                      {
+                        "type": "button",
+                        "text":{
+                          "type": "plain_text",
+                          "text": "view job"
+                        },
+                        "url": "${CIRCLE_BUILD_URL}"
+                      }
+                    ]
+                  }
+                  ]
+                },
+              ]
+            }
+  
+  terraform-destroy:
+    executor: terraform-executor
+    steps:
+      - checkout
+      - *show-current-branch-name
+      - run:
+          name: Terraform Destroy
+          command: |
+            cd artifacts/infrastructure/
+            terraform init
+            terraform workspace select ${CIRCLE_BRANCH} || terraform workspace new {CIRCLE_BRANCH}
+            terrraform destroy --auto-approve
 
 workflows:
   build_and_deploy: 
@@ -140,18 +290,19 @@ workflows:
                 - develop
                 - staging
                 - master
-      - prettier:
+      - terraform-validate:
           requires:
-            - build
+            - linting
+            - prettier
           filters:
             branches:
               only:
                 - develop
                 - staging
                 - master
-      - deploy-to-aws-s3:
+      - terraform-plan-and-apply:
           requires:
-            - build
+            - terraform-validate
           filters:
             branches:
               only:
@@ -160,7 +311,28 @@ workflows:
                 - master 
       - deploy-to-aws-cloudfront:
           requires:
+            - terraform-plan-and-apply
+          filters:
+            branches:
+              only:
+                - develop
+                - staging
+                - master 
+      - notify-via-slack:
+          requires:
             - deploy-to-aws-s3
+          filters:
+            branches:
+              only:
+                - develop
+                - staging
+      - hold:
+          type: approval
+          requires: 
+            -deploy-to-aws-cloudfront
+      - terraform-destroy:
+            requires:
+            - terraform-plan-and-apply
           filters:
             branches:
               only:
