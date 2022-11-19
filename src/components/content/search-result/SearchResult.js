@@ -4,6 +4,8 @@ import './SearchResult.scss'
 import { connect } from 'react-redux'
 import { v4 as uuidv4} from 'uuid';
 import PropTypes from 'prop-types';
+import { Link } from 'react-router-dom';
+
 import Rating from '../rating/Rating'
 import { IMAGE_URL } from '../../../services/movies-service'
 import LazyImage from '../../lazy-image/LazyImage';
@@ -14,7 +16,13 @@ const [movieData, setMovieData] = useState([]);
 
 useEffect(() =>{
   setMovieData(searchResult);
-}, [searchResult])
+}, [searchResult]);
+
+const formatMovieTitle = (title) => {
+  const titleStr = title.toLowerCase();
+  return titleStr.replace(/ /g, '-')
+}
+
 
   return (
     <div className='searchKeyword'>
@@ -34,7 +42,7 @@ useEffect(() =>{
                 >
                 <div className='grid-read-more'>
                   <button className='grid-cell-button'>
-                    Read More
+                  <Link to={`/${data.id}/${formatMovieTitle(data.title)}/details`}>Read More</Link>
                   </button>  
                 </div>
                 <div className='grid-details'>

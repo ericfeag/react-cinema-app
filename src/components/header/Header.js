@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { connect } from 'react-redux';
 import PropTypes from 'prop-types';
+import { useHistory } from 'react-router-dom';
 import { MOVIE_API_URL } from '../../services/movies-service';
 import {getMovies, setMovieType, setResponsePageNumber, searchQuery, searchResult} from '../../redux/actions/movies';
 
@@ -41,6 +42,8 @@ const Header = () => {
   const [type, setType] = useState('now_playing');
   const [search, setSearch] = useState('');
 
+  const history = useHistory();
+
   useEffect(() =>{
     getMovies(type, 1)
     setResponsePageNumber(page, totalPages)
@@ -56,6 +59,10 @@ const Header = () => {
     searchQuery(e.target.value);
     searchQuery(e.target.value);
   };
+
+  const navigateToMainPage = () => {
+    history.push('/');
+  }
 
   const toogleMenu = () =>{
     menuClass = !menuClass;
@@ -73,7 +80,7 @@ const Header = () => {
     <div className='header-nav-wrapper'>
         <div className='header-bar'></div>
         <div className='header-navbar'>
-            <div className='header-image'>
+            <div className='header-image' onClick={() => navigateToMainPage()}>
                 {/*<img src='' alt='' />*/}
                 Cinema App
             </div>

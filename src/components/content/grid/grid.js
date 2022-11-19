@@ -6,6 +6,7 @@ import PropTypes from 'prop-types';
 import Rating from '../rating/Rating'
 import { IMAGE_URL } from '../../../services/movies-service'
 import LazyImage from '../../lazy-image/LazyImage';
+import { Link } from 'react-router-dom';
 
 const Grid = (props) => {
 const {list} = props;
@@ -14,6 +15,11 @@ const [movieData, setMovieData] = useState([]);
 useEffect(() =>{
   setMovieData(list);
 }, [list])
+
+const formatMovieTitle = (title) => {
+  const titleStr = title.toLowerCase();
+  return titleStr.replace(/ /g, '-')
+}
 
   return (
     <>
@@ -28,7 +34,7 @@ useEffect(() =>{
                 >
                 <div className='grid-read-more'>
                   <button className='grid-cell-button'>
-                    Read More
+                    <Link to={`/${data.id}/${formatMovieTitle(data.title)}/details`}>Read More</Link>
                   </button>  
                 </div>
                 <div className='grid-details'>
