@@ -1,38 +1,54 @@
-import React from 'react';
+import React,{useState} from 'react';
+import { connect } from 'react-redux' 
+import { useParams } from 'react-router-dom'
+import PropTypes from 'prop-types';
 
 import './Media.scss';
+import { IMAGE_URL } from '../../../../services/movies-service';
 
-const Media = () => {
+const Media = (props) => {
+  const { movie } = props;
+  const [media] = useState(movie[2]);
+  const [videos] = useState(movie[3]);
   return (
     <>
       <div className="media">
         <div>
           <div className="media-title">Watch Trailer</div>
           <div className="media-videos">
-            <div className="video">
+          {
+            videos.results.map((data) =>
+            <div className="video" key={data.key}>
               <iframe
                 title="Avengers"
                 style={{
                   width: '100%',
                   height: '100%'
                 }}
-                src="https://www.youtube.com/embed/TcMBFSGVi1c"
+                src={`https://www.youtube.com/embed/${data.key}`}
                 frameBorder="0"
                 allowFullScreen
               />
             </div>
-          </div>
+            )
+          }
+         </div>
         </div>
         <div>
-          <div className="media-title">Photos (10)</div>
+          <div className="media-title">Photos ({media.posters.length})</div>
           <div className="media-images">
+          {
+            media.posters.map((data) =>
             <div
+              key={i}
               className="image-cell"
               style={{
                 backgroundImage:
-                  'url(https://images.pexels.com/photos/688574/pexels-photo-688574.jpeg?auto=compress&cs=tinysrgb&dpr=1&w=500)'
+                  `url(${IMAGE_URL}${data.file_path})`
               }}
             ></div>
+            )
+          }
           </div>
         </div>
       </div>
@@ -40,4 +56,18 @@ const Media = () => {
   );
 };
 
-export default Media;
+Media.propTypes = {
+  movie: PropTypes.array,
+  movieDetails: PropTypes.func
+}
+
+const mapStateToProps = (state) => ({
+  movie: state.movies.movie
+});
+
+
+export default connect(
+  mapStateToProps,
+  {}
+)(Media);
+

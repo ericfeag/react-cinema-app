@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { connect } from 'react-redux';
 import PropTypes from 'prop-types';
-import { useHistory } from 'react-router-dom';
+import { useHistory , useLocation} from 'react-router-dom';
 import { MOVIE_API_URL } from '../../services/movies-service';
-import {getMovies, setMovieType, setResponsePageNumber, searchQuery, searchResult} from '../../redux/actions/movies';
+import {getMovies, setMovieType, setResponsePageNumber, searchQuery, searchResult, clearMovieDetails} from '../../redux/actions/movies';
 
 import './Header.scss'
 //import logo from '../../logo.svg';
@@ -41,17 +41,32 @@ const Header = () => {
   let [menuClass, setMenuClass] = useState(false);
   const [type, setType] = useState('now_playing');
   const [search, setSearch] = useState('');
+  const [disableSearch, setDisableSearch] = useState(false);
 
   const history = useHistory();
+  const location = useLocation();
 
   useEffect(() =>{
     getMovies(type, 1)
     setResponsePageNumber(page, totalPages)
-  }, [type]);
+
+    if (location.pathname !== '/' && location.key) {
+      setDisableSearch(true);
+    }
+
+  }, [type, disableSearch, location]);
 
   const setMovieTypeUrl = (type) => {
+    setDisableSearch(false);
+    if(location.pathname !== '/') {
+      clearMovieDetails();
+      history.push('/');
+      setType(type);
+      setMovieType(type)
+    } else {
     setType(type);
     setMovieType(type);
+    }
   };
 
   const onSearchChange = (e) =>{
@@ -61,6 +76,8 @@ const Header = () => {
   };
 
   const navigateToMainPage = () => {
+    setDisableSearch(false);
+    clearMovieDetails();
     history.push('/');
   }
 
@@ -111,7 +128,7 @@ const Header = () => {
         }
         </ul>
         <input
-          className='search-input'
+          className={`search-input ${disableSearch ? 'disabled' :''}`}
           type = 'text'
           placeholder='Search for a movie'
           value= {search}
@@ -128,6 +145,7 @@ Header.propTypes = {
   setMovieType: PropTypes.func,
   searchQuery: PropTypes.func,
   searchResult: PropTypes.func,
+  clearMovieDetails: PropTypes.func,
   setResponsePageNumber: PropTypes.func,
   list: PropTypes.array,
   page: PropTypes.number,
@@ -142,5 +160,5 @@ const mapStateToProps = (state) =>({
 
 export default connect(
   mapStateToProps,
-  {getMovies, setMovieType, setResponsePageNumber}
+  {getMovies, setMovieType, setResponsePageNumber, searchQuery, searchResult }
 )(Header);
