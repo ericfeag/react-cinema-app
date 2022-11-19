@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { connect } from 'react-redux';
 import PropTypes from 'prop-types';
 import { MOVIE_API_URL } from '../../services/movies-service';
-import {getMovies, setMovieType, setResponsePageNumber} from '../../redux/actions/movies';
+import {getMovies, setMovieType, setResponsePageNumber, searchQuery, searchResult} from '../../redux/actions/movies';
 
 import './Header.scss'
 //import logo from '../../logo.svg';
@@ -35,10 +35,11 @@ const HEADER_LIST = [
 ];
 
 const Header = () => {
-  const { getMovies, setMovieType, page, totalPages, setRsponsePageNumber } = props;
+  const { getMovies, setMovieType, page, totalPages, setRsponsePageNumber, searchQuery, searchResult } = props;
   let [navClass, setNavClass] = useState(false);
   let [menuClass, setMenuClass] = useState(false);
   const [type, setType] = useState('now_playing');
+  const [search, setSearch] = useState('');
 
   useEffect(() =>{
     getMovies(type, 1)
@@ -48,6 +49,12 @@ const Header = () => {
   const setMovieTypeUrl = (type) => {
     setType(type);
     setMovieType(type);
+  };
+
+  const onSearchChange = (e) =>{
+    setSearch(e.target.value);
+    searchQuery(e.target.value);
+    searchQuery(e.target.value);
   };
 
   const toogleMenu = () =>{
@@ -100,6 +107,8 @@ const Header = () => {
           className='search-input'
           type = 'text'
           placeholder='Search for a movie'
+          value= {search}
+          onChange= {onSearchChange}
 
           />
       </div>
@@ -110,6 +119,8 @@ const Header = () => {
 Header.propTypes = {
   getMovies: PropTypes.func,
   setMovieType: PropTypes.func,
+  searchQuery: PropTypes.func,
+  searchResult: PropTypes.func,
   setResponsePageNumber: PropTypes.func,
   list: PropTypes.array,
   page: PropTypes.number,
@@ -117,7 +128,7 @@ Header.propTypes = {
 }
 
 const mapStateToProps = (state) =>({
-  list: state.movies.list,
+ // list: state.movies.list,
   page: state.movie.page,
   totalPages: state.movies.totalPages
 });
