@@ -11,6 +11,7 @@ import Details from './components/content/details/Details';
 import ErrorBoundary from './components/error/ErrorBoundary';
 import { appRoutes } from './redux/actions/routes';
 import { AppRoutes } from './routes';
+import errorPage from './redux/error/error-page';
 
 const App =() => {
   return(
@@ -21,6 +22,7 @@ const App =() => {
         <Switch>
           <Route exact path='/' component={Main} /> 
           <Route exact path='/:id/:name/details' component={Details} /> 
+          <Route exact path='*' component={errorPage} />
         </Switch>
       </div>
       </Router>

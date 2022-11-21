@@ -20,6 +20,7 @@ const Main = (props) => {
       setLoading(false);
     }, 3000);
   },[]);
+  
   useEffect(()  =>{
     setResponsePageNumber(currentPage, totalPages);
    loadMoreMovies('now_playing', currentPage)

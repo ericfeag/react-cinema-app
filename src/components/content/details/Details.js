@@ -14,8 +14,16 @@ import { IMAGE_URL }  from '../../../services/movies.service'
 
 export const Details = (props) => {
     const { movieDetails, movie} = props;
-    const [details, setDetails] = useState()
+    const [details, setDetails] = useState();
+    const [loading, setLoading] = useState(false);
     const { id } = useParams();
+
+    useEffect(()  =>{
+        setLoading(true);
+        setTimeout(() =>{
+          setLoading(false);
+        }, 2000);
+      },[]);
 
     useEffect(() =>{
         if (movie.length === 0) {
@@ -26,9 +34,7 @@ export const Details = (props) => {
 
   return (
     <>
-    {
-        details &&
-    
+    { loading ? <Spinner /> : details &&
         <div className='movie-container'>
             <div 
             className='movie-bg'

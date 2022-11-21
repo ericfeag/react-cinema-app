@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { connect } from 'react-redux';
 import PropTypes from 'prop-types';
-import { useHistory , useLocation} from 'react-router-dom';
+import { useHistory , useLocation, useRouteMatch} from 'react-router-dom';
 import { MOVIE_API_URL } from '../../services/movies-service';
 import {getMovies, setMovieType, setResponsePageNumber, searchQuery, searchResult, clearMovieDetails} from '../../redux/actions/movies';
 
@@ -42,13 +42,18 @@ const Header = () => {
   const [type, setType] = useState('now_playing');
   const [search, setSearch] = useState('');
   const [disableSearch, setDisableSearch] = useState(false);
+  const [hideHeader, setHideHeader] = useState(false);
 
   const history = useHistory();
   const location = useLocation();
+  const detailsRoute = useRouteMatch('/id/:name/details');
 
   useEffect(() =>{
     getMovies(type, 1)
     setResponsePageNumber(page, totalPages)
+    if (detailsRoute || location.pathname === '/'){
+      setHideHeader(true)
+    }
 
     if (location.pathname !== '/' && location.key) {
       setDisableSearch(true);
@@ -94,7 +99,10 @@ const Header = () => {
   }
 
   return (
-    <div className='header-nav-wrapper'>
+    <>
+    {
+      hideHeader && (
+        <div className='header-nav-wrapper'>
         <div className='header-bar'></div>
         <div className='header-navbar'>
             <div className='header-image' onClick={() => navigateToMainPage()}>
@@ -137,6 +145,11 @@ const Header = () => {
           />
       </div>
     </div>
+
+      )
+    }
+    
+    </>
   );
 };
 
