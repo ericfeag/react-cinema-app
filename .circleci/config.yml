@@ -97,6 +97,16 @@ jobs:
       - run: 
           name: Run prettier check
           command: npm run prettier:check 
+
+  unit-test:
+    executor: app-executor
+    steps:
+      - checkout
+      - *show-current-branch-name
+      - *restore_cache
+      - run:
+          name: Run unit unit
+          command: npm run test
   
   terraform-validate: 
     executor: terraform-executor
@@ -284,6 +294,27 @@ workflows:
       - linting:
           requires:
             -build
+          filters:
+            branches:
+              only:
+                - develop
+                - staging
+                - master
+
+      - prettier:
+          requires:
+            - build
+          filters:
+            branches: 
+              only:
+                - develop
+                - staging
+                - master
+
+      - unit-test:
+          requires:
+            - linting
+            - prettier
           filters:
             branches:
               only:
